@@ -107,7 +107,11 @@ async function runTerminalScan(url, opts) {
       const fixSpinner = ora({ text: 'Loading fix patches...', indent: 2 }).start();
       const fixes = await fetchFixes(submission.scanId, { apiKey: opts.apiKey });
       fixSpinner.stop();
-      process.stdout.write(formatFixes(fixes));
+      if (fixes?._noAuth) {
+        process.stdout.write('\n  Auto-fix requires authentication. Run "adibilis login" to see code patches.\n\n');
+      } else {
+        process.stdout.write(formatFixes(fixes));
+      }
     } else {
       const fixCount = result.fixesAvailable || result.fixes?.patches?.totalPatches || 0;
       if (fixCount > 0) {
@@ -145,7 +149,10 @@ async function runTerminalScan(url, opts) {
 
 export function checkThreshold(result, threshold) {
   const idx = THRESHOLD_LEVELS.indexOf(threshold);
-  if (idx === -1) return 0;
+  if (idx === -1) {
+    process.stderr.write(`Error: Invalid threshold "${threshold}". Must be one of: ${THRESHOLD_LEVELS.join(', ')}\n`);
+    return 2;
+  }
 
   const levels = THRESHOLD_LEVELS.slice(0, idx + 1);
   const counts = result.violationsByImpact || result;

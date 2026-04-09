@@ -94,15 +94,15 @@ export async function openReport(scan) {
   const tmpFile = path.join(os.tmpdir(), `adibilis-report-${Date.now()}.html`);
   fs.writeFileSync(tmpFile, html, 'utf-8');
 
-  const openCmd =
-    process.platform === 'darwin'
-      ? 'open'
-      : process.platform === 'win32'
-        ? 'start'
-        : 'xdg-open';
+  // In headless/CI environments, just return the file path
+  if (process.env.CI || !process.stdout.isTTY) {
+    return tmpFile;
+  }
+
+  const args = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', tmpFile]] : [process.platform === 'darwin' ? 'open' : 'xdg-open', [tmpFile]];
 
   return new Promise((resolve, reject) => {
-    execFile(openCmd, [tmpFile], (err) => {
+    execFile(args[0], args[1], (err) => {
       if (err) reject(err);
       else resolve(tmpFile);
     });

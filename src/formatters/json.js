@@ -1,16 +1,20 @@
 export function formatScanJson(scan, { fixes = null, ignoreRules = [] } = {}) {
   const violations = (scan.violations || []).filter((v) => !ignoreRules.includes(v.id));
 
+  // Recalculate severity counts from filtered violations
+  const counts = { critical: 0, serious: 0, moderate: 0, minor: 0 };
+  for (const v of violations) {
+    const impact = v.impact || 'minor';
+    if (impact in counts) counts[impact] += v.nodes?.length || 1;
+  }
+
   const result = {
     url: scan.url || scan.site?.url || null,
     status: scan.status,
     passRate: scan.passRate ?? null,
     violations: {
       total: violations.length,
-      critical: scan.critical || 0,
-      serious: scan.serious || 0,
-      moderate: scan.moderate || 0,
-      minor: scan.minor || 0,
+      ...counts,
     },
     rules: violations.map((v) => ({
       id: v.id,

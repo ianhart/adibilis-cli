@@ -1,6 +1,8 @@
 import { Command } from 'commander';
 import { scanCommand } from './commands/scan.js';
 import { loginCommand } from './commands/login.js';
+import { logoutCommand } from './commands/logout.js';
+import { whoamiCommand } from './commands/whoami.js';
 import { initCommand } from './commands/init.js';
 
 export function createProgram() {
@@ -9,7 +11,7 @@ export function createProgram() {
   program
     .name('adibilis')
     .description('Scan websites for WCAG 2.2 AA accessibility violations')
-    .version('1.0.0');
+    .version('0.1.0');
 
   program
     .command('scan <url>')
@@ -28,6 +30,16 @@ export function createProgram() {
     .command('login')
     .description('Authenticate with your Adibilis API key')
     .action(loginCommand);
+
+  program
+    .command('logout')
+    .description('Remove stored API key')
+    .action(logoutCommand);
+
+  program
+    .command('whoami')
+    .description('Show current authentication status and plan')
+    .action(whoamiCommand);
 
   program
     .command('init')

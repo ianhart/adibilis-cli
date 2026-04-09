@@ -40,7 +40,7 @@ export function parseSimpleYaml(text) {
   let currentKey = null;
 
   for (const rawLine of text.split('\n')) {
-    const line = rawLine.replace(/#.*$/, '').trimEnd();
+    const line = rawLine.replace(/(?<=\s)#.*$|^#.*$/, '').trimEnd();
     if (!line.trim()) continue;
 
     const listMatch = line.match(/^\s+-\s+(.+)$/);

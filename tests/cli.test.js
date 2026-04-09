@@ -111,7 +111,7 @@ describe('getBaseUrl', () => {
 
   it('returns default URL when env is not set', () => {
     delete process.env.ADIBILIS_API_URL;
-    expect(getBaseUrl()).toBe('https://adibilis-api-production.up.railway.app');
+    expect(getBaseUrl()).toBe('https://api.adibilis.dev');
   });
 
   it('returns custom URL from env', () => {

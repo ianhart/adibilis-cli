@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-const DEFAULT_BASE_URL = 'https://adibilis-api-production.up.railway.app';
+const DEFAULT_BASE_URL = 'https://api.adibilis.dev';
 const CONFIG_DIR = path.join(os.homedir(), '.adibilis');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
@@ -10,7 +10,11 @@ const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 120000;
 
 export function getBaseUrl() {
-  return process.env.ADIBILIS_API_URL || DEFAULT_BASE_URL;
+  const url = process.env.ADIBILIS_API_URL || DEFAULT_BASE_URL;
+  if (url.startsWith('http://')) {
+    process.stderr.write('Warning: ADIBILIS_API_URL uses http:// — API key will be sent in cleartext.\n');
+  }
+  return url;
 }
 
 export function getApiKey(flagValue) {
@@ -30,16 +34,30 @@ export function readStoredApiKey() {
 
 export function saveApiKey(apiKey) {
   fs.mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ apiKey }, null, 2) + '\n', 'utf-8');
-  fs.chmodSync(CONFIG_FILE, 0o600);
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ apiKey }, null, 2) + '\n', { encoding: 'utf-8', mode: 0o600 });
 }
 
 const RETRYABLE_STATUSES = [429, 502, 503, 504];
 const MAX_RETRIES = 3;
 
+const REQUEST_TIMEOUT_MS = 30000;
+
 async function fetchWithRetry(url, options = {}) {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const response = await fetch(url, options);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    let response;
+    try {
+      response = await fetch(url, { ...options, signal: controller.signal });
+    } catch (err) {
+      clearTimeout(timeout);
+      if (attempt === MAX_RETRIES) throw err;
+      await new Promise((r) => setTimeout(r, Math.pow(2, attempt) * 1000));
+      continue;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!RETRYABLE_STATUSES.includes(response.status) || attempt === MAX_RETRIES) {
       return response;
@@ -84,11 +102,18 @@ export async function submitScan(url, options = {}) {
   }
 
   if (!res.ok) {
+    if (res.status === 401) throw new Error('Authentication failed. Run "adibilis login" to set your API key.');
+    if (res.status === 403) throw new Error('Access denied. Your plan may not include this feature.');
+    if (res.status === 429) throw new Error('Rate limit exceeded. Check your plan limits at https://adibilis.dev/app/billing');
     const message = data.error || `HTTP ${res.status}`;
     throw new Error(message);
   }
 
-  return data;
+  if (!data.scanId && !data.id) {
+    throw new Error('Unexpected API response — no scan ID returned');
+  }
+
+  return { ...data, scanId: data.scanId || data.id };
 }
 
 export async function pollScan(scanId, { apiKey, onProgress } = {}) {
@@ -147,11 +172,11 @@ export async function fetchFixes(scanId, { apiKey } = {}) {
   const key = getApiKey(apiKey);
 
   if (!key) {
-    return null;
+    return { _noAuth: true };
   }
 
   const headers = { Authorization: `Bearer ${key}` };
-  const res = await fetch(`${baseUrl}/scans/${scanId}/fixes`, { headers });
+  const res = await fetchWithRetry(`${baseUrl}/scans/${scanId}/fixes`, { headers });
 
   if (!res.ok) return null;
   return res.json();
@@ -171,7 +196,7 @@ export async function fetchReport(scanId, { apiKey } = {}) {
     endpoint = `${baseUrl}/scan/${scanId}/report/pdf`;
   }
 
-  const res = await fetch(endpoint, { headers });
+  const res = await fetchWithRetry(endpoint, { headers });
 
   if (!res.ok) {
     throw new Error('Report not available');
