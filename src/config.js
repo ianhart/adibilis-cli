@@ -4,7 +4,7 @@ import path from 'node:path';
 const DEFAULT_CONFIG_NAME = '.adibilis.yml';
 
 const DEFAULT_CONFIG_CONTENT = `# Adibilis accessibility scanner configuration
-# See: https://adibilis.com/docs/cli
+# See: https://adibilis.dev/docs
 
 # Default URL to scan (optional — overridden by CLI argument)
 # url: https://your-site.com
