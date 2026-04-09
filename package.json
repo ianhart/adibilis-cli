@@ -20,11 +20,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ianhart/adibilis-cli.git"
+    "url": "https://github.com/builtbypine/adibilis-cli.git"
   },
   "homepage": "https://adibilis.dev",
   "bugs": {
-    "url": "https://github.com/ianhart/adibilis-cli/issues"
+    "url": "https://github.com/builtbypine/adibilis-cli/issues"
   },
   "author": "Adibilis",
   "dependencies": {
